@@ -127,6 +127,7 @@ public class MainActivity extends FragmentActivity {
         super.onDestroy();
     }
 
+    //test
 
     private void postNotification(String Identifier, Boolean states) {
 
