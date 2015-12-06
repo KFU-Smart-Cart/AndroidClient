@@ -46,4 +46,11 @@ public class ScanActivity extends Activity {
             finish();
         }
     }
+
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+        onDestroy();
+    }
 }

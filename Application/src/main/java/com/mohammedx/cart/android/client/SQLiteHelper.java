@@ -26,13 +26,11 @@ public class SQLiteHelper extends SQLiteOpenHelper {
         this.context = context;
     }
 
-
     @Override
     public void onCreate(SQLiteDatabase db) {
         try {
             db.execSQL(CREATE_TABLE);
         } catch (SQLException e) {
-
         }
     }
 

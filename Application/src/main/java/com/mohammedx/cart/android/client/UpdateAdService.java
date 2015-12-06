@@ -32,13 +32,14 @@ public class UpdateAdService extends IntentService {
     protected void onHandleIntent(Intent intent) {
         if (isNetworkAvailable()) {
             OkHttpClient client = new OkHttpClient();
-            String url = "http://192.168.1.5/SmartCartWeb/ad.php";
+            String url = "http://192.168.1.3/SmartCartWeb/ad.php";
             Request request = new Request.Builder().url(url).build();
             Call call = client.newCall(request);
             call.enqueue(new Callback() {
                 @Override
                 public void onFailure(Request request, IOException e) {
-                    MainActivity.AdRadey = true;
+                    MainActivity.AdReady = true;
+                    MainActivity.DBUpdate = true;
                 }
 
                 @Override
@@ -46,10 +47,13 @@ public class UpdateAdService extends IntentService {
                     try {
                         String jsonData = response.body().string();
                         if (response.isSuccessful()) {
-                            MainActivity.AdRadey = true;
+                            MainActivity.AdReady = true;
+
                             parseDetailsList(jsonData);
+                            MainActivity.DBUpdate = true;
                         } else {
-                            MainActivity.AdRadey = true;
+                            MainActivity.AdReady = true;
+                            MainActivity.DBUpdate = true;
                         }
                     } catch (IOException e) {
                         Log.d("IOExceptione", "" + e);
@@ -59,7 +63,8 @@ public class UpdateAdService extends IntentService {
                 }
             });
         } else {
-            MainActivity.AdRadey = true;
+            MainActivity.AdReady = true;
+            MainActivity.DBUpdate = true;
 //            Toast.makeText(this, "Network is unavailable", Toast.LENGTH_LONG).show();
         }
     }
@@ -98,7 +103,9 @@ public class UpdateAdService extends IntentService {
         ContentValues mContentValues = new ContentValues();
 
         long newRowId = -1;
+
         db.delete(mSqLiteHelper.TABLE_NAME, null, null);
+
         for (int i = 0; i < jArray.length(); i++) {
             mContentValues.put(mSqLiteHelper.TITLE, Title[i]);
             mContentValues.put(mSqLiteHelper.DESCRIPTION, Description[i]);
@@ -109,7 +116,7 @@ public class UpdateAdService extends IntentService {
         }
         if (newRowId != -1) {
             Log.d("XXX", "t");
-            MainActivity.AdRadey = true;
+            MainActivity.AdReady = true;
             MainActivity.DBUpdate = true;
         } else {
             Log.d("XXX", "f");
