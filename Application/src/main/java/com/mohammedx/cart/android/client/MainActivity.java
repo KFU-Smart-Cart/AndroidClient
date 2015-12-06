@@ -180,6 +180,7 @@ public class MainActivity extends FragmentActivity {
                 }
             }
             DBUpdate = false;
+            db.close();
 
 
             String sUUID = String.valueOf(UUID).toLowerCase();

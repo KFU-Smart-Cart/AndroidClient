@@ -121,5 +121,6 @@ public class UpdateAdService extends IntentService {
         } else {
             Log.d("XXX", "f");
         }
+        db.close();
     }
 }
