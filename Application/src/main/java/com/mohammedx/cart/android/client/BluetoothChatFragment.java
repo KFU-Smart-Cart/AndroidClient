@@ -44,15 +44,6 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.estimote.sdk.Beacon;
-import com.estimote.sdk.BeaconManager;
-import com.estimote.sdk.Region;
-import com.estimote.sdk.Utils;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
 
 /**
  * This fragment controls Bluetooth to communicate with other devices.
@@ -70,15 +61,6 @@ public class BluetoothChatFragment extends Fragment {
     private ListView mConversationView;
     private EditText mOutEditText;
     private Button mSendButton;
-
-
-    public Region beaconX, beaconY;
-    public BeaconManager beaconManager;
-    double x = -1;
-    double y = -1;
-    boolean redayx = false;
-    boolean redayy = false;
-    double pos = 0;
 
     /**
      * Name of the connected device
@@ -102,6 +84,7 @@ public class BluetoothChatFragment extends Fragment {
                         case BluetoothChatService.STATE_CONNECTED:
                             setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
                             mConversationArrayAdapter.clear();
+                            MainActivity.isConncted = true;
                             break;
                         case BluetoothChatService.STATE_CONNECTING:
                             setStatus(R.string.title_connecting);
@@ -109,6 +92,7 @@ public class BluetoothChatFragment extends Fragment {
                         case BluetoothChatService.STATE_LISTEN:
                         case BluetoothChatService.STATE_NONE:
                             setStatus(R.string.title_not_connected);
+                            MainActivity.isConncted = false;
                             break;
                     }
                     break;
@@ -184,64 +168,12 @@ public class BluetoothChatFragment extends Fragment {
             activity.finish();
         }
 
-        beaconX = new Region("ice", UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"), 15011, 3641);
-        beaconY = new Region("mint", UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"), 33392, 16805);
-        beaconManager = new BeaconManager(getActivity());
-        beaconManager.setBackgroundScanPeriod(TimeUnit.SECONDS.toMillis(1), 0);
-        beaconManager.setRangingListener(new BeaconManager.RangingListener() {
-            @Override
-            public void onBeaconsDiscovered(Region region, final List<Beacon> list) {
-                for (final Beacon beacon : list) {
-                    if (beacon.getProximityUUID().equals(beaconX.getProximityUUID()) && (beacon.getMajor() == beaconX.getMajor()) && (beacon.getMinor() == beaconX.getMinor())) {
-                        getActivity(). runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                x = Utils.computeAccuracy(beacon);
-                                Log.d("MMMM", "MMx = " + beacon.getMeasuredPower());
-                                redayx = true;
-                            }
-                        });
-                    }
-                    if (beacon.getProximityUUID().equals(beaconY.getProximityUUID()) && (beacon.getMajor() == beaconY.getMajor()) && (beacon.getMinor() == beaconY.getMinor())) {
-                        getActivity().runOnUiThread(new Runnable() {
-                            ;
-
-                            @Override
-                            public void run() {
-                                y = Utils.computeAccuracy(beacon);
-                                redayy = true;
-                                Log.d("MMMM", "MMy = " + beacon.getMeasuredPower());
-                            }
-                        });
-                    }
-                    if (redayx && redayy) {
-                       getActivity().runOnUiThread(new Runnable() {
-                           @Override
-                           public void run() {
-                               dis(x, y);
-                           }
-                       });
-                    } else if (!redayx && !redayy) {
-                        redayx = false;
-                        redayy = false;
-                    }
-                }
-            }
-        });
 
     }
 
     @Override
     public void onStart() {
         super.onStart();
-
-//        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
-//            @Override
-//            public void onServiceReady() {
-//                beaconManager.startRanging(beaconX);
-//                beaconManager.startRanging(beaconY);
-//            }
-//        });
 
         // If BT is not on, request that it be enabled.
         // setupChat() will then be called during onActivityResult
@@ -326,18 +258,6 @@ public class BluetoothChatFragment extends Fragment {
         // Initialize the buffer for outgoing messages
         mOutStringBuffer = new StringBuffer("");
     }
-
-//    /**
-//     * Makes this device discoverable.
-//     */
-//    private void ensureDiscoverable() {
-//        if (mBluetoothAdapter.getScanMode() !=
-//                BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
-//            Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-//            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-//            startActivity(discoverableIntent);
-//        }
-//    }
 
     /**
      * Sends a message.
@@ -442,29 +362,6 @@ public class BluetoothChatFragment extends Fragment {
         mChatService.connect(device, secure);
     }
 
-    public void dis(double x, double y) {
-        redayx = false;
-        redayy = false;
-        pos = Math.abs(((x - y) / ((x + y) / 2)) * 100);
-        if (pos >= 75.0) {
-            if (x > y) {
-                //left
-                Log.d("ddd", "XXXXXX");
-                sendMessage("2");
-            } else if (y > x) {
-                //right
-                Log.d("ddd", "YYYYYY");
-                sendMessage("3");
-            }
-        } else {//move
-            Log.d("ddd", "SSSS");
-            sendMessage("0");
-        }
-        Log.d("ddd", "X = " + x);
-        Log.d("ddd", "Y = " + y);
-        Log.d("ddd", "pos = " + pos);
-        pos = 0;
-    }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {

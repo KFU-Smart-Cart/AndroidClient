@@ -10,12 +10,14 @@ import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
 
 import com.estimote.sdk.Beacon;
 import com.estimote.sdk.BeaconManager;
 import com.estimote.sdk.Region;
+import com.estimote.sdk.Utils;
 
 import java.util.List;
 import java.util.UUID;
@@ -26,11 +28,19 @@ public class MainActivity extends FragmentActivity {
     private static final int NOTIFICATION_ID = 123;
     public static boolean AdReady = false;
     public static boolean DBUpdate = false;
+    public static boolean isConncted = false;
     public String[] aTitle;
     public String[] aDescription;
     public String[] aUUID;
     public String[] aMajor;
     public String[] aMinor;
+    public Region beaconX, beaconY;
+    double x = -1;
+    double y = -1;
+    boolean redayx = false;
+    boolean redayy = false;
+    double pos = 0;
+    private BluetoothChatFragment fragment;
     private BeaconManager beaconManager;
     private NotificationManager notificationManager;
     private Region iceRegion;
@@ -41,6 +51,8 @@ public class MainActivity extends FragmentActivity {
     private Region mintColdRegion;
     private boolean notify = false;
     private ArrayAdapter offeradap;
+    private Utils.Proximity proximityx;
+    private Utils.Proximity proximityy;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,7 +66,8 @@ public class MainActivity extends FragmentActivity {
             startService(UpdateAdService);
 
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-            BluetoothChatFragment fragment = new BluetoothChatFragment();
+            fragment = new BluetoothChatFragment();
+
             transaction.replace(R.id.sample_content_fragment, fragment);
             transaction.commit();
 
@@ -115,7 +128,85 @@ public class MainActivity extends FragmentActivity {
                     postNotification(region.getIdentifier(), false, region.getProximityUUID(), region.getMajor(), region.getMinor());
                 }
             });
+
+
+            beaconX = new Region("mintCold", UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"), 47188, 25260);
+            beaconY = new Region("iceCold", UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"), 22224, 23153);
+
+
+            beaconManager.setRangingListener(new BeaconManager.RangingListener() {
+                @Override
+                public void onBeaconsDiscovered(Region region, final List<Beacon> list) {
+                    for (final Beacon beacon : list) {
+                        if (beacon.getProximityUUID().equals(beaconX.getProximityUUID()) && (beacon.getMajor() == beaconX.getMajor()) && (beacon.getMinor() == beaconX.getMinor())) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    x = Utils.computeAccuracy(beacon);
+                                    proximityx = Utils.computeProximity(beacon);
+                                    Log.d("MMMM", "MMx = " + beacon.getMeasuredPower());
+                                    redayx = true;
+                                }
+                            });
+                        }
+                        if (beacon.getProximityUUID().equals(beaconY.getProximityUUID()) && (beacon.getMajor() == beaconY.getMajor()) && (beacon.getMinor() == beaconY.getMinor())) {
+                            runOnUiThread(new Runnable() {
+                                ;
+
+                                @Override
+                                public void run() {
+                                    y = Utils.computeAccuracy(beacon);
+                                    proximityy = Utils.computeProximity(beacon);
+                                    redayy = true;
+                                    Log.d("MMMM", "MMy = " + beacon.getMeasuredPower());
+                                }
+                            });
+                        }
+                        if (redayx && redayy) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    dis(x, y);
+                                }
+                            });
+                        } else if (!redayx && !redayy) {
+                            redayx = false;
+                            redayy = false;
+                        }
+                    }
+                }
+            });
+
         }
+    }
+
+    /**
+     * Dispatch onStart() to all fragments.  Ensure any created loaders are
+     * now started.
+     */
+    @Override
+    protected void onStart() {
+        super.onStart();
+        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
+            @Override
+            public void onServiceReady() {
+                beaconManager.startRanging(beaconX);
+                beaconManager.startRanging(beaconY);
+            }
+        });
+
+        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
+            @Override
+            public void onServiceReady() {
+                beaconManager.startMonitoring(iceRegion);
+                beaconManager.startMonitoring(blueberryRegion);
+                beaconManager.startMonitoring(mintRegion);
+//                beaconManager.startMonitoring(iceColdRegion);
+                beaconManager.startMonitoring(blueberryColdRegion);
+//                beaconManager.startMonitoring(mintColdRegion);
+            }
+        });
+
     }
 
     @Override
@@ -128,13 +219,19 @@ public class MainActivity extends FragmentActivity {
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
             @Override
             public void onServiceReady() {
-                beaconManager.startMonitoring(iceRegion);
-                beaconManager.startMonitoring(blueberryRegion);
+                beaconManager.startRanging(beaconX);
+                beaconManager.startRanging(beaconY);
+            }
+        });
+        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
+            @Override
+            public void onServiceReady() {
+//                beaconManager.startMonitoring(iceRegion);
+//                beaconManager.startMonitoring(blueberryRegion);
                 beaconManager.startMonitoring(mintRegion);
                 beaconManager.startMonitoring(iceColdRegion);
                 beaconManager.startMonitoring(blueberryColdRegion);
                 beaconManager.startMonitoring(mintColdRegion);
-//                beaconManager.startMonitoring(publicRegion);
             }
         });
     }
@@ -146,7 +243,63 @@ public class MainActivity extends FragmentActivity {
         super.onDestroy();
     }
 
-    //test
+    public void dis(double x, double y) {
+        redayx = false;
+        redayy = false;
+        pos = Math.abs(((x - y) / ((x + y) / 2)) * 100);
+        if (proximityx == Utils.Proximity.IMMEDIATE && proximityy == Utils.Proximity.IMMEDIATE) {
+            fragment.sendMessage("1");
+            fragment.sendMessage("4");
+            try {
+                Thread.sleep(1550);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } else if (proximityx == Utils.Proximity.FAR && proximityy == Utils.Proximity.FAR) {
+            fragment.sendMessage("1");
+        } else {
+            fragment.sendMessage("5");
+            if (pos >= 90.0) {
+                if (x > y) {
+                    //left
+                    Log.d("ddd", "XXXXXX");
+                    if (isConncted) {
+                        fragment.sendMessage("3");
+                        try {
+                            Thread.sleep(3050);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                } else if (y > x) {
+                    //right
+                    Log.d("ddd", "YYYYYY");
+                    if (isConncted) {
+                        fragment.sendMessage("2");
+                        try {
+                            Thread.sleep(3050);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            } else {//move
+                Log.d("ddd", "SSSS");
+                if (isConncted) {
+                    fragment.sendMessage("0");
+                    try {
+                        Thread.sleep(1050);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            Log.d("ddd", "X = " + x);
+            Log.d("ddd", "Y = " + y);
+            Log.d("ddd", "pos = " + pos);
+            pos = 0;
+        }
+    }
 
     private void postNotification(String Identifier, Boolean states, UUID UUID, int Major, int Minor) {
         if (AdReady) {

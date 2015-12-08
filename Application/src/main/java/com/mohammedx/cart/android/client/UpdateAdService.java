@@ -32,7 +32,7 @@ public class UpdateAdService extends IntentService {
     protected void onHandleIntent(Intent intent) {
         if (isNetworkAvailable()) {
             OkHttpClient client = new OkHttpClient();
-            String url = "http://192.168.1.3/SmartCartWeb/ad.php";
+            String url = "http://"+Constants.IP+"/SmartCartWeb/ad.php";
             Request request = new Request.Builder().url(url).build();
             Call call = client.newCall(request);
             call.enqueue(new Callback() {
