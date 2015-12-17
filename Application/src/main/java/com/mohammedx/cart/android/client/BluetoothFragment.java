@@ -48,9 +48,9 @@ import android.widget.Toast;
 /**
  * This fragment controls Bluetooth to communicate with other devices.
  */
-public class BluetoothChatFragment extends Fragment {
+public class BluetoothFragment extends Fragment {
 
-    private static final String TAG = "BluetoothChatFragment";
+    private static final String TAG = "BluetoothFragment";
 
     // Intent request codes
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
@@ -61,6 +61,8 @@ public class BluetoothChatFragment extends Fragment {
     private ListView mConversationView;
     private EditText mOutEditText;
     private Button mSendButton;
+    private MenuItem mConnButton;
+    private MenuItem mDisButton;
 
     /**
      * Name of the connected device
@@ -72,7 +74,7 @@ public class BluetoothChatFragment extends Fragment {
      */
     private ArrayAdapter<String> mConversationArrayAdapter;
     /**
-     * The Handler that gets information back from the BluetoothChatService
+     * The Handler that gets information back from the BluetoothService
      */
     private final Handler mHandler = new Handler() {
         @Override
@@ -81,16 +83,16 @@ public class BluetoothChatFragment extends Fragment {
             switch (msg.what) {
                 case Constants.MESSAGE_STATE_CHANGE:
                     switch (msg.arg1) {
-                        case BluetoothChatService.STATE_CONNECTED:
-                            setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
+                        case BluetoothService.STATE_CONNECTED:
+                            setStatus(getString(R.string.title_connected_to));
                             mConversationArrayAdapter.clear();
                             MainActivity.isConncted = true;
                             break;
-                        case BluetoothChatService.STATE_CONNECTING:
+                        case BluetoothService.STATE_CONNECTING:
                             setStatus(R.string.title_connecting);
                             break;
-                        case BluetoothChatService.STATE_LISTEN:
-                        case BluetoothChatService.STATE_NONE:
+                        case BluetoothService.STATE_LISTEN:
+                        case BluetoothService.STATE_NONE:
                             setStatus(R.string.title_not_connected);
                             MainActivity.isConncted = false;
                             break;
@@ -112,8 +114,8 @@ public class BluetoothChatFragment extends Fragment {
                     // save the connected device's name
                     mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
                     if (null != activity) {
-                        Toast.makeText(activity, "Connected to "
-                                + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(activity, "Connected to cart"
+                                , Toast.LENGTH_SHORT).show();
                     }
                     break;
                 case Constants.MESSAGE_TOAST:
@@ -138,7 +140,7 @@ public class BluetoothChatFragment extends Fragment {
      */
 
 
-    private BluetoothChatService mChatService = null;
+    private BluetoothService mChatService = null;
     /**
      * The action listener for the EditText widget, to listen for the return key
      */
@@ -205,7 +207,7 @@ public class BluetoothChatFragment extends Fragment {
         // onResume() will be called when ACTION_REQUEST_ENABLE activity returns.
         if (mChatService != null) {
             // Only if the state is STATE_NONE, do we know that we haven't started already
-            if (mChatService.getState() == BluetoothChatService.STATE_NONE) {
+            if (mChatService.getState() == BluetoothService.STATE_NONE) {
                 // Start the Bluetooth chat services
                 mChatService.start();
             }
@@ -252,8 +254,8 @@ public class BluetoothChatFragment extends Fragment {
             }
         });
 
-        // Initialize the BluetoothChatService to perform bluetooth connections
-        mChatService = new BluetoothChatService(getActivity(), mHandler);
+        // Initialize the BluetoothService to perform bluetooth connections
+        mChatService = new BluetoothService(getActivity(), mHandler);
 
         // Initialize the buffer for outgoing messages
         mOutStringBuffer = new StringBuffer("");
@@ -266,14 +268,14 @@ public class BluetoothChatFragment extends Fragment {
      */
     public void sendMessage(String message) {
         // Check that we're actually connected before trying anything
-        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
+        if (mChatService.getState() != BluetoothService.STATE_CONNECTED) {
             Toast.makeText(getActivity(), R.string.not_connected, Toast.LENGTH_SHORT).show();
             return;
         }
 
         // Check that there's actually something to send
         if (message.length() > 0) {
-            // Get the message bytes and tell the BluetoothChatService to write
+            // Get the message bytes and tell the BluetoothService to write
             byte[] send = message.getBytes();
             mChatService.write(send);
 
@@ -366,6 +368,15 @@ public class BluetoothChatFragment extends Fragment {
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.bluetooth_chat, menu);
+
+    }
+
+
+    @Override
+    public void onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        mConnButton = menu.findItem(R.id.secure_connect_scan);
+        mDisButton = menu.findItem(R.id.secure_disconnect_scan);
     }
 
     @Override
@@ -375,6 +386,10 @@ public class BluetoothChatFragment extends Fragment {
                 Intent serverIntent = new Intent(getActivity(), ScanActivity.class);
                 startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
                 return true;
+            }
+            case R.id.secure_disconnect_scan: {
+                mChatService.stop();
+                setupChat();
             }
         }
         return false;

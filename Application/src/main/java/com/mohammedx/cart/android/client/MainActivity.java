@@ -8,11 +8,13 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.estimote.sdk.Beacon;
 import com.estimote.sdk.BeaconManager;
@@ -40,7 +42,8 @@ public class MainActivity extends FragmentActivity {
     boolean redayx = false;
     boolean redayy = false;
     double pos = 0;
-    private BluetoothChatFragment fragment;
+    boolean doubleBackToExitPressedOnce = false;
+    private BluetoothFragment fragment;
     private BeaconManager beaconManager;
     private NotificationManager notificationManager;
     private Region iceRegion;
@@ -66,7 +69,7 @@ public class MainActivity extends FragmentActivity {
             startService(UpdateAdService);
 
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-            fragment = new BluetoothChatFragment();
+            fragment = new BluetoothFragment();
 
             transaction.replace(R.id.sample_content_fragment, fragment);
             transaction.commit();
@@ -166,7 +169,7 @@ public class MainActivity extends FragmentActivity {
                             runOnUiThread(new Runnable() {
                                 @Override
                                 public void run() {
-                                    dis(x, y);
+//                                    dis(x, y);
                                 }
                             });
                         } else if (!redayx && !redayy) {
@@ -243,22 +246,57 @@ public class MainActivity extends FragmentActivity {
         super.onDestroy();
     }
 
+    /**
+     * Take care of popping the fragment back stack or finishing the activity
+     * as appropriate.
+     */
+    @Override
+    public void onBackPressed() {
+        if (doubleBackToExitPressedOnce) {
+            super.onBackPressed();
+            return;
+        }
+
+        this.doubleBackToExitPressedOnce = true;
+        Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show();
+
+        new Handler().postDelayed(new Runnable() {
+
+            @Override
+            public void run() {
+                doubleBackToExitPressedOnce = false;
+            }
+        }, 2000);
+    }
+
     public void dis(double x, double y) {
         redayx = false;
         redayy = false;
         pos = Math.abs(((x - y) / ((x + y) / 2)) * 100);
-        if (proximityx == Utils.Proximity.IMMEDIATE && proximityy == Utils.Proximity.IMMEDIATE) {
-            fragment.sendMessage("1");
-            fragment.sendMessage("4");
+        if (proximityx == Utils.Proximity.IMMEDIATE || proximityy == Utils.Proximity.IMMEDIATE) {
+            if (isConncted) {
+                fragment.sendMessage("1");
+                fragment.sendMessage("4");
+            }
             try {
                 Thread.sleep(1550);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        } else if (proximityx == Utils.Proximity.FAR && proximityy == Utils.Proximity.FAR) {
-            fragment.sendMessage("1");
+        } else if (proximityx == Utils.Proximity.FAR || proximityy == Utils.Proximity.FAR) {
+            if (isConncted) {
+                fragment.sendMessage("1");
+                fragment.sendMessage("4");
+            }
+            try {
+                Thread.sleep(1550);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
         } else {
-            fragment.sendMessage("5");
+            if (isConncted) {
+                fragment.sendMessage("5");
+            }
             if (pos >= 90.0) {
                 if (x > y) {
                     //left
@@ -354,7 +392,7 @@ public class MainActivity extends FragmentActivity {
             }
 
             if (notify) {
-                int beaconColor = R.drawable.beacon_gray;
+                int beaconColor = R.drawable.cart_launcher;
                 Intent notifyIntent = new Intent(MainActivity.this, MainActivity.class);
                 notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 PendingIntent pendingIntent = PendingIntent.getActivities(
@@ -363,20 +401,20 @@ public class MainActivity extends FragmentActivity {
                         new Intent[]{notifyIntent},
                         PendingIntent.FLAG_UPDATE_CURRENT);
 
-                switch (Identifier) {
-                    case "ice":
-                    case "iceCold":
-                        beaconColor = R.drawable.beacon_ice;
-                        break;
-                    case "blueberry":
-                    case "blueberryCold":
-                        beaconColor = R.drawable.beacon_blueberry;
-                        break;
-                    case "mint":
-                    case "mintCold":
-                        beaconColor = R.drawable.beacon_mint;
-                        break;
-                }
+//                switch (Identifier) {
+//                    case "ice":
+//                    case "iceCold":
+//                        beaconColor = R.drawable.beacon_ice;
+//                        break;
+//                    case "blueberry":
+//                    case "blueberryCold":
+//                        beaconColor = R.drawable.beacon_blueberry;
+//                        break;
+//                    case "mint":
+//                    case "mintCold":
+//                        beaconColor = R.drawable.beacon_mint;
+//                        break;
+//                }
 
                 Notification notification = new Notification.Builder(MainActivity.this)
                         .setSmallIcon((beaconColor))
