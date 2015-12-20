@@ -64,6 +64,8 @@ public class BluetoothFragment extends Fragment {
     private MenuItem mConnButton;
     private MenuItem mDisButton;
 
+    private boolean disnotfiy = false;
+
     /**
      * Name of the connected device
      */
@@ -87,6 +89,7 @@ public class BluetoothFragment extends Fragment {
                             setStatus(getString(R.string.title_connected_to));
                             mConversationArrayAdapter.clear();
                             MainActivity.isConncted = true;
+                            disnotfiy=true;
                             break;
                         case BluetoothService.STATE_CONNECTING:
                             setStatus(R.string.title_connecting);
@@ -95,6 +98,7 @@ public class BluetoothFragment extends Fragment {
                         case BluetoothService.STATE_NONE:
                             setStatus(R.string.title_not_connected);
                             MainActivity.isConncted = false;
+                            if(disnotfiy){MainActivity.notifydis(getActivity());}
                             break;
                     }
                     break;
@@ -127,6 +131,11 @@ public class BluetoothFragment extends Fragment {
             }
         }
     };
+
+    private void notifydis() {
+
+    }
+
     /**
      * String buffer for outgoing messages
      */
@@ -169,7 +178,6 @@ public class BluetoothFragment extends Fragment {
             Toast.makeText(activity, "Bluetooth is not available", Toast.LENGTH_LONG).show();
             activity.finish();
         }
-
 
     }
 

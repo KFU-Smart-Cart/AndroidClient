@@ -28,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends FragmentActivity {
 
     private static final int NOTIFICATION_ID = 123;
+    private static final int NOTIFICATION_DIS = 124;
     public static boolean AdReady = false;
     public static boolean DBUpdate = false;
     public static boolean isConncted = false;
@@ -46,6 +47,7 @@ public class MainActivity extends FragmentActivity {
     private BluetoothFragment fragment;
     private BeaconManager beaconManager;
     private NotificationManager notificationManager;
+    public static NotificationManager notificationManager1;
     private Region iceRegion;
     private Region blueberryRegion;
     private Region mintRegion;
@@ -115,6 +117,7 @@ public class MainActivity extends FragmentActivity {
             mintColdRegion = new Region("mintCold", mintColdUUID, mintColdMajor, mintColdMinor);
 
             notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager1 = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             beaconManager = new BeaconManager(this);
 
             // Default values are 5s of scanning and 25s of waiting time to save CPU cycles.
@@ -154,8 +157,6 @@ public class MainActivity extends FragmentActivity {
                         }
                         if (beacon.getProximityUUID().equals(beaconY.getProximityUUID()) && (beacon.getMajor() == beaconY.getMajor()) && (beacon.getMinor() == beaconY.getMinor())) {
                             runOnUiThread(new Runnable() {
-                                ;
-
                                 @Override
                                 public void run() {
                                     y = Utils.computeAccuracy(beacon);
@@ -217,6 +218,7 @@ public class MainActivity extends FragmentActivity {
         super.onResume();
         if (notificationManager != null) {
             notificationManager.cancel(NOTIFICATION_ID);
+            notificationManager1.cancel(NOTIFICATION_DIS);
         }
 
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
@@ -242,6 +244,7 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onDestroy() {
         notificationManager.cancel(NOTIFICATION_ID);
+        notificationManager1.cancel(NOTIFICATION_DIS);
         beaconManager.disconnect();
         super.onDestroy();
     }
@@ -267,6 +270,29 @@ public class MainActivity extends FragmentActivity {
                 doubleBackToExitPressedOnce = false;
             }
         }, 2000);
+    }
+
+    public static void notifydis(Context context){
+        int beaconColor = R.drawable.cart_launcher;
+        Intent notifyIntent = new Intent(context, MainActivity.class);
+        notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivities(
+                context,
+                0,
+                new Intent[]{notifyIntent},
+                PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification notification = new Notification.Builder(context)
+                .setSmallIcon((beaconColor))
+                .setContentTitle("Connection")
+                .setContentText("Lost connection with the cart")
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build();
+
+        notification.defaults |= Notification.DEFAULT_SOUND;
+        notification.defaults |= Notification.DEFAULT_LIGHTS;
+        notificationManager1.notify(NOTIFICATION_DIS, notification);
     }
 
     public void dis(double x, double y) {
