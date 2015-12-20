@@ -8,14 +8,18 @@ import android.content.Intent;
 import android.database.Cursor;
 import android.database.sqlite.SQLiteDatabase;
 import android.os.Bundle;
+import android.os.Handler;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
+import android.util.Log;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
+import android.widget.Toast;
 
 import com.estimote.sdk.Beacon;
 import com.estimote.sdk.BeaconManager;
 import com.estimote.sdk.Region;
+import com.estimote.sdk.Utils;
 
 import java.util.List;
 import java.util.UUID;
@@ -24,15 +28,26 @@ import java.util.concurrent.TimeUnit;
 public class MainActivity extends FragmentActivity {
 
     private static final int NOTIFICATION_ID = 123;
+    private static final int NOTIFICATION_DIS = 124;
     public static boolean AdReady = false;
     public static boolean DBUpdate = false;
+    public static boolean isConncted = false;
     public String[] aTitle;
     public String[] aDescription;
     public String[] aUUID;
     public String[] aMajor;
     public String[] aMinor;
+    public Region beaconX, beaconY;
+    double x = -1;
+    double y = -1;
+    boolean redayx = false;
+    boolean redayy = false;
+    double pos = 0;
+    boolean doubleBackToExitPressedOnce = false;
+    private BluetoothFragment fragment;
     private BeaconManager beaconManager;
     private NotificationManager notificationManager;
+    public static NotificationManager notificationManager1;
     private Region iceRegion;
     private Region blueberryRegion;
     private Region mintRegion;
@@ -41,6 +56,8 @@ public class MainActivity extends FragmentActivity {
     private Region mintColdRegion;
     private boolean notify = false;
     private ArrayAdapter offeradap;
+    private Utils.Proximity proximityx;
+    private Utils.Proximity proximityy;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,7 +71,8 @@ public class MainActivity extends FragmentActivity {
             startService(UpdateAdService);
 
             FragmentTransaction transaction = getSupportFragmentManager().beginTransaction();
-            BluetoothChatFragment fragment = new BluetoothChatFragment();
+            fragment = new BluetoothFragment();
+
             transaction.replace(R.id.sample_content_fragment, fragment);
             transaction.commit();
 
@@ -99,6 +117,7 @@ public class MainActivity extends FragmentActivity {
             mintColdRegion = new Region("mintCold", mintColdUUID, mintColdMajor, mintColdMinor);
 
             notificationManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            notificationManager1 = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
             beaconManager = new BeaconManager(this);
 
             // Default values are 5s of scanning and 25s of waiting time to save CPU cycles.
@@ -115,15 +134,70 @@ public class MainActivity extends FragmentActivity {
                     postNotification(region.getIdentifier(), false, region.getProximityUUID(), region.getMajor(), region.getMinor());
                 }
             });
+
+
+            beaconX = new Region("mintCold", UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"), 47188, 25260);
+            beaconY = new Region("iceCold", UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"), 22224, 23153);
+
+
+            beaconManager.setRangingListener(new BeaconManager.RangingListener() {
+                @Override
+                public void onBeaconsDiscovered(Region region, final List<Beacon> list) {
+                    for (final Beacon beacon : list) {
+                        if (beacon.getProximityUUID().equals(beaconX.getProximityUUID()) && (beacon.getMajor() == beaconX.getMajor()) && (beacon.getMinor() == beaconX.getMinor())) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    x = Utils.computeAccuracy(beacon);
+                                    proximityx = Utils.computeProximity(beacon);
+                                    Log.d("MMMM", "MMx = " + beacon.getMeasuredPower());
+                                    redayx = true;
+                                }
+                            });
+                        }
+                        if (beacon.getProximityUUID().equals(beaconY.getProximityUUID()) && (beacon.getMajor() == beaconY.getMajor()) && (beacon.getMinor() == beaconY.getMinor())) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+                                    y = Utils.computeAccuracy(beacon);
+                                    proximityy = Utils.computeProximity(beacon);
+                                    redayy = true;
+                                    Log.d("MMMM", "MMy = " + beacon.getMeasuredPower());
+                                }
+                            });
+                        }
+                        if (redayx && redayy) {
+                            runOnUiThread(new Runnable() {
+                                @Override
+                                public void run() {
+//                                    dis(x, y);
+                                }
+                            });
+                        } else if (!redayx && !redayy) {
+                            redayx = false;
+                            redayy = false;
+                        }
+                    }
+                }
+            });
+
         }
     }
 
+    /**
+     * Dispatch onStart() to all fragments.  Ensure any created loaders are
+     * now started.
+     */
     @Override
-    protected void onResume() {
-        super.onResume();
-        if (notificationManager != null) {
-            notificationManager.cancel(NOTIFICATION_ID);
-        }
+    protected void onStart() {
+        super.onStart();
+        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
+            @Override
+            public void onServiceReady() {
+                beaconManager.startRanging(beaconX);
+                beaconManager.startRanging(beaconY);
+            }
+        });
 
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
             @Override
@@ -131,10 +205,38 @@ public class MainActivity extends FragmentActivity {
                 beaconManager.startMonitoring(iceRegion);
                 beaconManager.startMonitoring(blueberryRegion);
                 beaconManager.startMonitoring(mintRegion);
+//                beaconManager.startMonitoring(iceColdRegion);
+                beaconManager.startMonitoring(blueberryColdRegion);
+//                beaconManager.startMonitoring(mintColdRegion);
+            }
+        });
+
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        if (notificationManager != null) {
+            notificationManager.cancel(NOTIFICATION_ID);
+            notificationManager1.cancel(NOTIFICATION_DIS);
+        }
+
+        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
+            @Override
+            public void onServiceReady() {
+                beaconManager.startRanging(beaconX);
+                beaconManager.startRanging(beaconY);
+            }
+        });
+        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
+            @Override
+            public void onServiceReady() {
+//                beaconManager.startMonitoring(iceRegion);
+//                beaconManager.startMonitoring(blueberryRegion);
+                beaconManager.startMonitoring(mintRegion);
                 beaconManager.startMonitoring(iceColdRegion);
                 beaconManager.startMonitoring(blueberryColdRegion);
                 beaconManager.startMonitoring(mintColdRegion);
-//                beaconManager.startMonitoring(publicRegion);
             }
         });
     }
@@ -142,11 +244,126 @@ public class MainActivity extends FragmentActivity {
     @Override
     protected void onDestroy() {
         notificationManager.cancel(NOTIFICATION_ID);
+        notificationManager1.cancel(NOTIFICATION_DIS);
         beaconManager.disconnect();
         super.onDestroy();
     }
 
-    //test
+    /**
+     * Take care of popping the fragment back stack or finishing the activity
+     * as appropriate.
+     */
+    @Override
+    public void onBackPressed() {
+        if (doubleBackToExitPressedOnce) {
+            super.onBackPressed();
+            return;
+        }
+
+        this.doubleBackToExitPressedOnce = true;
+        Toast.makeText(this, "Please click BACK again to exit", Toast.LENGTH_SHORT).show();
+
+        new Handler().postDelayed(new Runnable() {
+
+            @Override
+            public void run() {
+                doubleBackToExitPressedOnce = false;
+            }
+        }, 2000);
+    }
+
+    public static void notifydis(Context context){
+        int beaconColor = R.drawable.cart_launcher;
+        Intent notifyIntent = new Intent(context, MainActivity.class);
+        notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivities(
+                context,
+                0,
+                new Intent[]{notifyIntent},
+                PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification notification = new Notification.Builder(context)
+                .setSmallIcon((beaconColor))
+                .setContentTitle("Connection")
+                .setContentText("Lost connection with the cart")
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build();
+
+        notification.defaults |= Notification.DEFAULT_SOUND;
+        notification.defaults |= Notification.DEFAULT_LIGHTS;
+        notificationManager1.notify(NOTIFICATION_DIS, notification);
+    }
+
+    public void dis(double x, double y) {
+        redayx = false;
+        redayy = false;
+        pos = Math.abs(((x - y) / ((x + y) / 2)) * 100);
+        if (proximityx == Utils.Proximity.IMMEDIATE || proximityy == Utils.Proximity.IMMEDIATE) {
+            if (isConncted) {
+                fragment.sendMessage("1");
+                fragment.sendMessage("4");
+            }
+            try {
+                Thread.sleep(1550);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } else if (proximityx == Utils.Proximity.FAR || proximityy == Utils.Proximity.FAR) {
+            if (isConncted) {
+                fragment.sendMessage("1");
+                fragment.sendMessage("4");
+            }
+            try {
+                Thread.sleep(1550);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+        } else {
+            if (isConncted) {
+                fragment.sendMessage("5");
+            }
+            if (pos >= 90.0) {
+                if (x > y) {
+                    //left
+                    Log.d("ddd", "XXXXXX");
+                    if (isConncted) {
+                        fragment.sendMessage("3");
+                        try {
+                            Thread.sleep(3050);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                } else if (y > x) {
+                    //right
+                    Log.d("ddd", "YYYYYY");
+                    if (isConncted) {
+                        fragment.sendMessage("2");
+                        try {
+                            Thread.sleep(3050);
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                    }
+                }
+            } else {//move
+                Log.d("ddd", "SSSS");
+                if (isConncted) {
+                    fragment.sendMessage("0");
+                    try {
+                        Thread.sleep(1050);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            }
+            Log.d("ddd", "X = " + x);
+            Log.d("ddd", "Y = " + y);
+            Log.d("ddd", "pos = " + pos);
+            pos = 0;
+        }
+    }
 
     private void postNotification(String Identifier, Boolean states, UUID UUID, int Major, int Minor) {
         if (AdReady) {
@@ -201,7 +418,7 @@ public class MainActivity extends FragmentActivity {
             }
 
             if (notify) {
-                int beaconColor = R.drawable.beacon_gray;
+                int beaconColor = R.drawable.cart_launcher;
                 Intent notifyIntent = new Intent(MainActivity.this, MainActivity.class);
                 notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
                 PendingIntent pendingIntent = PendingIntent.getActivities(
@@ -210,20 +427,20 @@ public class MainActivity extends FragmentActivity {
                         new Intent[]{notifyIntent},
                         PendingIntent.FLAG_UPDATE_CURRENT);
 
-                switch (Identifier) {
-                    case "ice":
-                    case "iceCold":
-                        beaconColor = R.drawable.beacon_ice;
-                        break;
-                    case "blueberry":
-                    case "blueberryCold":
-                        beaconColor = R.drawable.beacon_blueberry;
-                        break;
-                    case "mint":
-                    case "mintCold":
-                        beaconColor = R.drawable.beacon_mint;
-                        break;
-                }
+//                switch (Identifier) {
+//                    case "ice":
+//                    case "iceCold":
+//                        beaconColor = R.drawable.beacon_ice;
+//                        break;
+//                    case "blueberry":
+//                    case "blueberryCold":
+//                        beaconColor = R.drawable.beacon_blueberry;
+//                        break;
+//                    case "mint":
+//                    case "mintCold":
+//                        beaconColor = R.drawable.beacon_mint;
+//                        break;
+//                }
 
                 Notification notification = new Notification.Builder(MainActivity.this)
                         .setSmallIcon((beaconColor))

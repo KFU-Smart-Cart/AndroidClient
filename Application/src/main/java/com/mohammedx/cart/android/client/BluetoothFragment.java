@@ -44,22 +44,13 @@ import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.estimote.sdk.Beacon;
-import com.estimote.sdk.BeaconManager;
-import com.estimote.sdk.Region;
-import com.estimote.sdk.Utils;
-
-import java.util.List;
-import java.util.UUID;
-import java.util.concurrent.TimeUnit;
-
 
 /**
  * This fragment controls Bluetooth to communicate with other devices.
  */
-public class BluetoothChatFragment extends Fragment {
+public class BluetoothFragment extends Fragment {
 
-    private static final String TAG = "BluetoothChatFragment";
+    private static final String TAG = "BluetoothFragment";
 
     // Intent request codes
     private static final int REQUEST_CONNECT_DEVICE_SECURE = 1;
@@ -70,15 +61,10 @@ public class BluetoothChatFragment extends Fragment {
     private ListView mConversationView;
     private EditText mOutEditText;
     private Button mSendButton;
+    private MenuItem mConnButton;
+    private MenuItem mDisButton;
 
-
-    public Region beaconX, beaconY;
-    public BeaconManager beaconManager;
-    double x = -1;
-    double y = -1;
-    boolean redayx = false;
-    boolean redayy = false;
-    double pos = 0;
+    private boolean disnotfiy = false;
 
     /**
      * Name of the connected device
@@ -90,7 +76,7 @@ public class BluetoothChatFragment extends Fragment {
      */
     private ArrayAdapter<String> mConversationArrayAdapter;
     /**
-     * The Handler that gets information back from the BluetoothChatService
+     * The Handler that gets information back from the BluetoothService
      */
     private final Handler mHandler = new Handler() {
         @Override
@@ -99,16 +85,20 @@ public class BluetoothChatFragment extends Fragment {
             switch (msg.what) {
                 case Constants.MESSAGE_STATE_CHANGE:
                     switch (msg.arg1) {
-                        case BluetoothChatService.STATE_CONNECTED:
-                            setStatus(getString(R.string.title_connected_to, mConnectedDeviceName));
+                        case BluetoothService.STATE_CONNECTED:
+                            setStatus(getString(R.string.title_connected_to));
                             mConversationArrayAdapter.clear();
+                            MainActivity.isConncted = true;
+                            disnotfiy=true;
                             break;
-                        case BluetoothChatService.STATE_CONNECTING:
+                        case BluetoothService.STATE_CONNECTING:
                             setStatus(R.string.title_connecting);
                             break;
-                        case BluetoothChatService.STATE_LISTEN:
-                        case BluetoothChatService.STATE_NONE:
+                        case BluetoothService.STATE_LISTEN:
+                        case BluetoothService.STATE_NONE:
                             setStatus(R.string.title_not_connected);
+                            MainActivity.isConncted = false;
+                            if(disnotfiy){MainActivity.notifydis(getActivity());}
                             break;
                     }
                     break;
@@ -128,8 +118,8 @@ public class BluetoothChatFragment extends Fragment {
                     // save the connected device's name
                     mConnectedDeviceName = msg.getData().getString(Constants.DEVICE_NAME);
                     if (null != activity) {
-                        Toast.makeText(activity, "Connected to "
-                                + mConnectedDeviceName, Toast.LENGTH_SHORT).show();
+                        Toast.makeText(activity, "Connected to cart"
+                                , Toast.LENGTH_SHORT).show();
                     }
                     break;
                 case Constants.MESSAGE_TOAST:
@@ -141,6 +131,11 @@ public class BluetoothChatFragment extends Fragment {
             }
         }
     };
+
+    private void notifydis() {
+
+    }
+
     /**
      * String buffer for outgoing messages
      */
@@ -154,7 +149,7 @@ public class BluetoothChatFragment extends Fragment {
      */
 
 
-    private BluetoothChatService mChatService = null;
+    private BluetoothService mChatService = null;
     /**
      * The action listener for the EditText widget, to listen for the return key
      */
@@ -184,64 +179,11 @@ public class BluetoothChatFragment extends Fragment {
             activity.finish();
         }
 
-        beaconX = new Region("ice", UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"), 15011, 3641);
-        beaconY = new Region("mint", UUID.fromString("B9407F30-F5F8-466E-AFF9-25556B57FE6D"), 33392, 16805);
-        beaconManager = new BeaconManager(getActivity());
-        beaconManager.setBackgroundScanPeriod(TimeUnit.SECONDS.toMillis(1), 0);
-        beaconManager.setRangingListener(new BeaconManager.RangingListener() {
-            @Override
-            public void onBeaconsDiscovered(Region region, final List<Beacon> list) {
-                for (final Beacon beacon : list) {
-                    if (beacon.getProximityUUID().equals(beaconX.getProximityUUID()) && (beacon.getMajor() == beaconX.getMajor()) && (beacon.getMinor() == beaconX.getMinor())) {
-                        getActivity(). runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                x = Utils.computeAccuracy(beacon);
-                                Log.d("MMMM", "MMx = " + beacon.getMeasuredPower());
-                                redayx = true;
-                            }
-                        });
-                    }
-                    if (beacon.getProximityUUID().equals(beaconY.getProximityUUID()) && (beacon.getMajor() == beaconY.getMajor()) && (beacon.getMinor() == beaconY.getMinor())) {
-                        getActivity().runOnUiThread(new Runnable() {
-                            ;
-
-                            @Override
-                            public void run() {
-                                y = Utils.computeAccuracy(beacon);
-                                redayy = true;
-                                Log.d("MMMM", "MMy = " + beacon.getMeasuredPower());
-                            }
-                        });
-                    }
-                    if (redayx && redayy) {
-                       getActivity().runOnUiThread(new Runnable() {
-                           @Override
-                           public void run() {
-                               dis(x, y);
-                           }
-                       });
-                    } else if (!redayx && !redayy) {
-                        redayx = false;
-                        redayy = false;
-                    }
-                }
-            }
-        });
-
     }
 
     @Override
     public void onStart() {
         super.onStart();
-
-//        beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
-//            @Override
-//            public void onServiceReady() {
-//                beaconManager.startRanging(beaconX);
-//                beaconManager.startRanging(beaconY);
-//            }
-//        });
 
         // If BT is not on, request that it be enabled.
         // setupChat() will then be called during onActivityResult
@@ -273,7 +215,7 @@ public class BluetoothChatFragment extends Fragment {
         // onResume() will be called when ACTION_REQUEST_ENABLE activity returns.
         if (mChatService != null) {
             // Only if the state is STATE_NONE, do we know that we haven't started already
-            if (mChatService.getState() == BluetoothChatService.STATE_NONE) {
+            if (mChatService.getState() == BluetoothService.STATE_NONE) {
                 // Start the Bluetooth chat services
                 mChatService.start();
             }
@@ -320,24 +262,12 @@ public class BluetoothChatFragment extends Fragment {
             }
         });
 
-        // Initialize the BluetoothChatService to perform bluetooth connections
-        mChatService = new BluetoothChatService(getActivity(), mHandler);
+        // Initialize the BluetoothService to perform bluetooth connections
+        mChatService = new BluetoothService(getActivity(), mHandler);
 
         // Initialize the buffer for outgoing messages
         mOutStringBuffer = new StringBuffer("");
     }
-
-//    /**
-//     * Makes this device discoverable.
-//     */
-//    private void ensureDiscoverable() {
-//        if (mBluetoothAdapter.getScanMode() !=
-//                BluetoothAdapter.SCAN_MODE_CONNECTABLE_DISCOVERABLE) {
-//            Intent discoverableIntent = new Intent(BluetoothAdapter.ACTION_REQUEST_DISCOVERABLE);
-//            discoverableIntent.putExtra(BluetoothAdapter.EXTRA_DISCOVERABLE_DURATION, 300);
-//            startActivity(discoverableIntent);
-//        }
-//    }
 
     /**
      * Sends a message.
@@ -346,14 +276,14 @@ public class BluetoothChatFragment extends Fragment {
      */
     public void sendMessage(String message) {
         // Check that we're actually connected before trying anything
-        if (mChatService.getState() != BluetoothChatService.STATE_CONNECTED) {
+        if (mChatService.getState() != BluetoothService.STATE_CONNECTED) {
             Toast.makeText(getActivity(), R.string.not_connected, Toast.LENGTH_SHORT).show();
             return;
         }
 
         // Check that there's actually something to send
         if (message.length() > 0) {
-            // Get the message bytes and tell the BluetoothChatService to write
+            // Get the message bytes and tell the BluetoothService to write
             byte[] send = message.getBytes();
             mChatService.write(send);
 
@@ -442,33 +372,19 @@ public class BluetoothChatFragment extends Fragment {
         mChatService.connect(device, secure);
     }
 
-    public void dis(double x, double y) {
-        redayx = false;
-        redayy = false;
-        pos = Math.abs(((x - y) / ((x + y) / 2)) * 100);
-        if (pos >= 75.0) {
-            if (x > y) {
-                //left
-                Log.d("ddd", "XXXXXX");
-                sendMessage("2");
-            } else if (y > x) {
-                //right
-                Log.d("ddd", "YYYYYY");
-                sendMessage("3");
-            }
-        } else {//move
-            Log.d("ddd", "SSSS");
-            sendMessage("0");
-        }
-        Log.d("ddd", "X = " + x);
-        Log.d("ddd", "Y = " + y);
-        Log.d("ddd", "pos = " + pos);
-        pos = 0;
-    }
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
         inflater.inflate(R.menu.bluetooth_chat, menu);
+
+    }
+
+
+    @Override
+    public void onPrepareOptionsMenu(Menu menu) {
+        super.onPrepareOptionsMenu(menu);
+        mConnButton = menu.findItem(R.id.secure_connect_scan);
+        mDisButton = menu.findItem(R.id.secure_disconnect_scan);
     }
 
     @Override
@@ -478,6 +394,10 @@ public class BluetoothChatFragment extends Fragment {
                 Intent serverIntent = new Intent(getActivity(), ScanActivity.class);
                 startActivityForResult(serverIntent, REQUEST_CONNECT_DEVICE_SECURE);
                 return true;
+            }
+            case R.id.secure_disconnect_scan: {
+                mChatService.stop();
+                setupChat();
             }
         }
         return false;
