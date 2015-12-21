@@ -98,7 +98,7 @@ public class BluetoothFragment extends Fragment {
                         case BluetoothService.STATE_NONE:
                             setStatus(R.string.title_not_connected);
                             MainActivity.isConncted = false;
-                            if(disnotfiy){MainActivity.notifydis(getActivity());}
+                            if(disnotfiy){MainActivity.notifydis(getActivity(),"Connection","Lost connection with the cart");}
                             break;
                     }
                     break;

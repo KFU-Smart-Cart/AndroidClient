@@ -272,7 +272,7 @@ public class MainActivity extends FragmentActivity {
         }, 2000);
     }
 
-    public static void notifydis(Context context){
+    public static void notifydis(Context context,String titel,String dis){
         int beaconColor = R.drawable.cart_launcher;
         Intent notifyIntent = new Intent(context, MainActivity.class);
         notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
@@ -284,8 +284,8 @@ public class MainActivity extends FragmentActivity {
 
         Notification notification = new Notification.Builder(context)
                 .setSmallIcon((beaconColor))
-                .setContentTitle("Connection")
-                .setContentText("Lost connection with the cart")
+                .setContentTitle(titel)
+                .setContentText(dis)
                 .setAutoCancel(true)
                 .setContentIntent(pendingIntent)
                 .build();
@@ -309,10 +309,11 @@ public class MainActivity extends FragmentActivity {
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
-        } else if (proximityx == Utils.Proximity.FAR || proximityy == Utils.Proximity.FAR) {
+        } else if ((proximityx == Utils.Proximity.FAR || proximityy == Utils.Proximity.FAR) || (proximityx == Utils.Proximity.UNKNOWN || proximityy == Utils.Proximity.UNKNOWN)) {
             if (isConncted) {
                 fragment.sendMessage("1");
                 fragment.sendMessage("4");
+                notifydis(this, "Cart","You are far from the cart");
             }
             try {
                 Thread.sleep(1550);
@@ -320,6 +321,7 @@ public class MainActivity extends FragmentActivity {
                 e.printStackTrace();
             }
         } else {
+            notificationManager1.cancel(NOTIFICATION_DIS);
             if (isConncted) {
                 fragment.sendMessage("5");
             }
