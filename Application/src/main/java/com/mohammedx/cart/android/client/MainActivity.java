@@ -32,6 +32,7 @@ public class MainActivity extends FragmentActivity {
     public static boolean AdReady = false;
     public static boolean DBUpdate = false;
     public static boolean isConncted = false;
+    public static NotificationManager notificationManager1;
     public String[] aTitle;
     public String[] aDescription;
     public String[] aUUID;
@@ -40,6 +41,8 @@ public class MainActivity extends FragmentActivity {
     public Region beaconX, beaconY;
     double x = -1;
     double y = -1;
+    Handler h;
+    Runnable far;
     boolean redayx = false;
     boolean redayy = false;
     double pos = 0;
@@ -47,7 +50,6 @@ public class MainActivity extends FragmentActivity {
     private BluetoothFragment fragment;
     private BeaconManager beaconManager;
     private NotificationManager notificationManager;
-    public static NotificationManager notificationManager1;
     private Region iceRegion;
     private Region blueberryRegion;
     private Region mintRegion;
@@ -59,6 +61,29 @@ public class MainActivity extends FragmentActivity {
     private Utils.Proximity proximityx;
     private Utils.Proximity proximityy;
 
+    public static void notifydis(Context context, String titel, String dis) {
+        int beaconColor = R.drawable.cart_launcher;
+        Intent notifyIntent = new Intent(context, MainActivity.class);
+        notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
+        PendingIntent pendingIntent = PendingIntent.getActivities(
+                context,
+                0,
+                new Intent[]{notifyIntent},
+                PendingIntent.FLAG_UPDATE_CURRENT);
+
+        Notification notification = new Notification.Builder(context)
+                .setSmallIcon((beaconColor))
+                .setContentTitle(titel)
+                .setContentText(dis)
+                .setAutoCancel(true)
+                .setContentIntent(pendingIntent)
+                .build();
+
+        notification.defaults |= Notification.DEFAULT_SOUND;
+        notification.defaults |= Notification.DEFAULT_LIGHTS;
+        notificationManager1.notify(NOTIFICATION_DIS, notification);
+    }
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -66,6 +91,19 @@ public class MainActivity extends FragmentActivity {
 
         if (savedInstanceState == null) {
 
+            h = new Handler();
+
+            far = new Runnable() {
+
+                @Override
+                public void run() {
+                    if (isConncted) {
+                        fragment.sendMessage("1");
+                        fragment.sendMessage("4");
+                        notifydis(MainActivity.this, "Cart", "You are far from the cart");
+                    }
+                }
+            };
 
             Intent UpdateAdService = new Intent(this, UpdateAdService.class);
             startService(UpdateAdService);
@@ -144,6 +182,7 @@ public class MainActivity extends FragmentActivity {
                 @Override
                 public void onBeaconsDiscovered(Region region, final List<Beacon> list) {
                     for (final Beacon beacon : list) {
+
                         if (beacon.getProximityUUID().equals(beaconX.getProximityUUID()) && (beacon.getMajor() == beaconX.getMajor()) && (beacon.getMinor() == beaconX.getMinor())) {
                             runOnUiThread(new Runnable() {
                                 @Override
@@ -152,6 +191,7 @@ public class MainActivity extends FragmentActivity {
                                     proximityx = Utils.computeProximity(beacon);
                                     Log.d("MMMM", "MMx = " + beacon.getMeasuredPower());
                                     redayx = true;
+
                                 }
                             });
                         }
@@ -166,17 +206,23 @@ public class MainActivity extends FragmentActivity {
                                 }
                             });
                         }
-                        if (redayx && redayy) {
-                            runOnUiThread(new Runnable() {
-                                @Override
-                                public void run() {
-//                                    dis(x, y);
+
+
+                        runOnUiThread(new Runnable() {
+                            @Override
+                            public void run() {
+                                if (redayx && redayy) {
+                                        dis(x, y);
+                                        x = 0;
+                                        y = 0;
+                                } else if (!redayx && !redayy) {
+                                    redayx = false;
+                                    redayy = false;
+                                    x = 0;
+                                    y = 0;
                                 }
-                            });
-                        } else if (!redayx && !redayy) {
-                            redayx = false;
-                            redayy = false;
-                        }
+                            }
+                        });
                     }
                 }
             });
@@ -231,12 +277,12 @@ public class MainActivity extends FragmentActivity {
         beaconManager.connect(new BeaconManager.ServiceReadyCallback() {
             @Override
             public void onServiceReady() {
-//                beaconManager.startMonitoring(iceRegion);
-//                beaconManager.startMonitoring(blueberryRegion);
+                beaconManager.startMonitoring(iceRegion);
+                beaconManager.startMonitoring(blueberryRegion);
                 beaconManager.startMonitoring(mintRegion);
-                beaconManager.startMonitoring(iceColdRegion);
+//                beaconManager.startMonitoring(iceColdRegion);
                 beaconManager.startMonitoring(blueberryColdRegion);
-                beaconManager.startMonitoring(mintColdRegion);
+//                beaconManager.startMonitoring(mintColdRegion);
             }
         });
     }
@@ -253,6 +299,8 @@ public class MainActivity extends FragmentActivity {
      * Take care of popping the fragment back stack or finishing the activity
      * as appropriate.
      */
+
+
     @Override
     public void onBackPressed() {
         if (doubleBackToExitPressedOnce) {
@@ -272,30 +320,8 @@ public class MainActivity extends FragmentActivity {
         }, 2000);
     }
 
-    public static void notifydis(Context context,String titel,String dis){
-        int beaconColor = R.drawable.cart_launcher;
-        Intent notifyIntent = new Intent(context, MainActivity.class);
-        notifyIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP);
-        PendingIntent pendingIntent = PendingIntent.getActivities(
-                context,
-                0,
-                new Intent[]{notifyIntent},
-                PendingIntent.FLAG_UPDATE_CURRENT);
-
-        Notification notification = new Notification.Builder(context)
-                .setSmallIcon((beaconColor))
-                .setContentTitle(titel)
-                .setContentText(dis)
-                .setAutoCancel(true)
-                .setContentIntent(pendingIntent)
-                .build();
-
-        notification.defaults |= Notification.DEFAULT_SOUND;
-        notification.defaults |= Notification.DEFAULT_LIGHTS;
-        notificationManager1.notify(NOTIFICATION_DIS, notification);
-    }
-
     public void dis(double x, double y) {
+        h.removeCallbacks(far);
         redayx = false;
         redayy = false;
         pos = Math.abs(((x - y) / ((x + y) / 2)) * 100);
@@ -313,7 +339,7 @@ public class MainActivity extends FragmentActivity {
             if (isConncted) {
                 fragment.sendMessage("1");
                 fragment.sendMessage("4");
-                notifydis(this, "Cart","You are far from the cart");
+                notifydis(this, "Cart", "You are far from the cart");
             }
             try {
                 Thread.sleep(1550);
@@ -365,6 +391,7 @@ public class MainActivity extends FragmentActivity {
             Log.d("ddd", "pos = " + pos);
             pos = 0;
         }
+        h.postDelayed(far, 10000);
     }
 
     private void postNotification(String Identifier, Boolean states, UUID UUID, int Major, int Minor) {
@@ -457,11 +484,11 @@ public class MainActivity extends FragmentActivity {
 
 
                 if (states) {
-                    offeradap.remove(nDescription);
-                    offeradap.add(nDescription);
+                    offeradap.remove(nTitle + ": " + nDescription);
+                    offeradap.add(nTitle + ": " + nDescription);
                     notificationManager.notify(NOTIFICATION_ID, notification);
                 } else {
-                    offeradap.remove(nDescription);
+                    offeradap.remove(nTitle + ": " + nDescription);
                     notificationManager.cancel(NOTIFICATION_ID);
                 }
 
