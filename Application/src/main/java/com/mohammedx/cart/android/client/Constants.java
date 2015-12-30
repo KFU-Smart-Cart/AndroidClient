@@ -31,7 +31,7 @@ public interface Constants {
     // Key names received from the BluetoothService Handler
     public static final String DEVICE_NAME = "device_name";
     public static final String TOAST = "toast";
-    public static final String IP = "192.168.1.3";
+    public static final String IP = "192.168.8.104";
 
 
 }

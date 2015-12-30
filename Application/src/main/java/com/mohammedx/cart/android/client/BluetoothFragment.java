@@ -132,9 +132,6 @@ public class BluetoothFragment extends Fragment {
         }
     };
 
-    private void notifydis() {
-
-    }
 
     /**
      * String buffer for outgoing messages

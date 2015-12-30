@@ -8,6 +8,7 @@ import android.database.sqlite.SQLiteDatabase;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.squareup.okhttp.Call;
 import com.squareup.okhttp.Callback;
@@ -47,9 +48,8 @@ public class UpdateAdService extends IntentService {
                     try {
                         String jsonData = response.body().string();
                         if (response.isSuccessful()) {
-                            MainActivity.AdReady = true;
-
                             parseDetailsList(jsonData);
+                            MainActivity.AdReady = true;
                             MainActivity.DBUpdate = true;
                         } else {
                             MainActivity.AdReady = true;
